@@ -31,5 +31,5 @@ buyer_counts_filtered['OwnerType'] = owner_type_list
 # Display the results
 print(buyer_counts_filtered)
 
-# Optional: save to a new CSV file
+# Save to a new CSV file
 buyer_counts_filtered.to_csv("buyer_counts_filtered_with_owner_type.csv", index=False)
