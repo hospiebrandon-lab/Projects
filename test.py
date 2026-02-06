@@ -4,9 +4,7 @@ from openpyxl import load_workbook
 from openpyxl.chart import PieChart, LineChart, Reference
 from openpyxl.styles import numbers
 
-# -----------------------------
-# 1. Load Data (Multiple Files)
-# -----------------------------
+# Load Data 
 file_paths = [
     "/Users/brandon/Downloads/Chase9149_Activity20250101_20251227_20251228.CSV"
     # add more files here as needed, make sure to add comma if you do
@@ -26,23 +24,21 @@ df = pd.concat(df_list, ignore_index=True)
 # Normalize column names
 df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
-# 🔥 CRITICAL FIX
 df["transaction_date"] = pd.to_datetime(
     df["transaction_date"],
     errors="coerce"
 )
 
-# Drop rows where date failed to parse (safety)
+# Drop rows where date failed
 df = df.dropna(subset=["transaction_date"])
-# Remove rows where description contains "payment" (case-insensitive)
+# Remove rows where description contains "payment"
 df = df[~df["description"].str.contains("payment", case=False, na=False)]
 
 # Multiply all amounts by -1
 df["amount"] = df["amount"] * -1
 
-# -----------------------------
-# 2. Transaction Table
-# -----------------------------
+
+# Transaction Table
 transaction_table = (
     df[["transaction_date", "description", "amount", "category"]]
     .sort_values("transaction_date")
@@ -52,9 +48,7 @@ transaction_table["transaction_date"] = (
     .dt.strftime("%Y-%m")
 )
 
-# -----------------------------
-# 3. Monthly + Full Year Category Totals
-# -----------------------------
+# Monthly + Full Year Category Totals
 df["month_str"] = df["transaction_date"].dt.strftime("%Y-%m")
 
 monthly_category_totals = {}
@@ -90,9 +84,9 @@ full_year_category_totals.loc[len(full_year_category_totals)] = [
     full_year_category_totals["total_amount"].sum()
 ]
 
-# -----------------------------
-# 4. Detect Recurring Expenses
-# -----------------------------
+
+# Recurring Expenses
+
 df["month"] = df["transaction_date"].dt.to_period("M")
 
 recurring = []
@@ -120,9 +114,7 @@ recurring_df = (
     .sort_values(by="total_amount", ascending=False)
 )
 
-# -----------------------------
-# 4.5 Monthly Spending Forecast
-# -----------------------------
+# Monthly Spending Forecast
 
 # Monthly total spending
 monthly_spend = (
@@ -161,9 +153,7 @@ forecast_df = pd.DataFrame({
     "predicted_spending": forecast_data
 })
 
-# -----------------------------
-# 5. Export to Excel
-# -----------------------------
+# Export to Excel
 with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
     transaction_table.to_excel(writer, sheet_name="Transactions", index=False)
     recurring_df.to_excel(writer, sheet_name="Recurring Expenses", index=False)
@@ -181,10 +171,8 @@ with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
             sheet_name=f"Categories {month}",
             index=False
         )
-
-# -----------------------------
-# 6. Add Pie Charts to Category Sheets
-# -----------------------------
+        
+# Add Pie Charts to Category Sheets
 wb = load_workbook(output_path)
 
 def add_pie_chart(ws, title):
@@ -215,9 +203,7 @@ for sheet_name in wb.sheetnames:
             f"Spending by Category ({sheet_name.replace('Categories ', '')})"
         )
 
-# -----------------------------
-# 6.5 Add Line Chart to Forecast Sheet
-# -----------------------------
+# Add Line Chart to Forecast Sheet
 
 forecast_ws = wb["Spending Forecast"]
 
@@ -226,7 +212,7 @@ line_chart.title = "Projected Monthly Spending"
 line_chart.y_axis.title = "Amount ($)"
 line_chart.x_axis.title = "Month"
 
-# Data range (predicted_spending)
+# Data range
 data = Reference(
     forecast_ws,
     min_col=2,
@@ -245,7 +231,7 @@ categories = Reference(
 line_chart.add_data(data, titles_from_data=True)
 line_chart.set_categories(categories)
 
-# Dynamically set Y-axis bounds (+/- $100)
+# Set Y-axis bounds
 forecast_values = [
     forecast_ws.cell(row=row, column=2).value
     for row in range(2, forecast_ws.max_row + 1)
@@ -259,9 +245,7 @@ if forecast_values:
 # Position chart
 forecast_ws.add_chart(line_chart, "D2")
 
-# -----------------------------
-# 7. Format money columns
-# -----------------------------
+# Format money columns
 
 money_format = '"$"#,##0.00'
 
@@ -278,9 +262,7 @@ for ws in wb.worksheets:
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = money_format
 
-# -----------------------------
-# 8. Auto-fit column widths
-# -----------------------------
+# Auto-fit column widths
 
 for ws in wb.worksheets:
     for column_cells in ws.columns:
@@ -296,4 +278,4 @@ for ws in wb.worksheets:
 
 wb.save(output_path)
 
-print(f"\n✅ Excel file created with pie charts:\n{output_path}")
+print("Excel file created with pie charts: {output_path}")
